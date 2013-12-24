@@ -1,0 +1,108 @@
+
+==================================
+= Leads QueryProcessor prototype =
+==================================
+
+Here you can find the code for the prototype of the Leads query processor. Moreover, there are the scripts and the dependent libraries.
+Note, that the pagerank algorithm is not in this code release. Instead, a google web service is used.
+===============
+= COMPILATION =
+===============
+
+you can compile tthe leads with the following command executed in the root directory of the project.
+mvn clean compile assembly:single
+Then, in the target directory you can find the jar file with all the runtime dependencies.
+To execute the leads query processor you can use the processor-with-crawler.sh script found in scripts directory. 
+Note that the script expects a jar in the working directory named LeadsQueryProcessor.jar and the crawler jar named as crawler.jar.
+
+In the scripts directory there are the following scripts:
+
+1. processor-standalone.sh :  This script starts a standalone instance of 
+the query processor and needs a running instance of the web crawler. Note that if there 
+is no running instance of the Distributed Crawler demo then there would be no 
+data for the query processor to process.  
+
+2. processor-with-crawler.sh:  This script is for demonstration purposes 
+only and starts an instance of the web crawler together with the query 
+processor. For the parametrization of the Leads crawler you can refer 
+either to the README file found in the leads crawler demo virtual machine 
+or to the REAMDE.crawler file found in the Leads-QueryProcessor Demo
+
+3. This script starts a service, which tracks the crawled pages and populates the  tables of the prototype.
+
+
+Notice that the prototype implementation currently supports the following 
+syntax:
+SELECT
+    select_expr [, select_expr ...]
+    [FROM table_reference
+    [ JOIN table_reference  ON col_name = col_name ]
+    [WHERE where_condition]
+    [GROUP BY {col_name} ]
+    [HAVING where_condition]
+    [ORDER BY {col_name}
+      [ASC | DESC]]
+    [LIMIT { row_count }]
+    
+At the moment, the following two tables are present in the prototype:
+1. webpages 
+   {  The webpages table contains the crawled webpages.
+      url string: the url of the webpage as a string,
+      domainName string: the domainName for the webpages as a string, 
+      pagerank double: the pagerank computed by WP3 pagerank algorithm as double,
+      body string: the contenty of the webpage as a string and
+      sentiment double: an overall estimation of the sentiment of webpage’s content.
+   }
+
+2. entities 
+   { The entities table contains interesting entities found in webpages i.e. adidas
+      webpageURL string: the url of the webpage that contains the entity,
+      name string: the name of the entity and
+      sentimentScore double: The sentiment for the entity in the webpage
+   }
+===============
+= LIMITATIONS =
+===============
+   
+There are some limitations in the current implementation of the prototype:
+1.       There is no support for aliases
+2.       In queries that contain a join the column of the table found in  FROM 
+clause must be the left operand in the equality relation .  In the following 
+example the url column of the webpages table is the left operand:
+SELECT domainName,name FROM webpages JOIN entities on url=webpageURL
+3.      There is no support for * in select expression for example  the 
+following query will not be processed:
+SELECT * FROM webpages
+
+============
+= EXAMPLES =
+============
+
+A small sample of queries that can be processed by the query processor 
+are presented.
+SELECT domainName, avg(pagerank) FROM webpages group by domainName ORDER BY avg(pagerank) DESC  LIMIT 10; 
+
+SELECT domainName, avg(pagerank), avg(sentimentScore) FROM webpages 
+JOIN entities on url=webpageURL 
+WHERE entities.name like 'a' GROUP BY domainName 
+HAVING avg(sentimentScore) > 0.5 ORDER BY  avg(pagerank) DESC; 
+
+SELECT count(*) from webpages;
+
+SELECT webpageURL,sentimentScore FROM entities WHERE sentimentScore > 0.4 LIMIT 5;
+
+=================
+= CONFIGURATION =
+=================
+
+The query processor is parametrized via the processor.properties file present at 
+the root of the directory, as illustrated below.
+processorInfinispanConfigFile=infinispan-clustered-tcp-processor.xml
+processorSentimentAnalysisKeyFile=key-processor.txt
+verbose=true;
+
+The processorInfinispanConfigFile defines the file used to configure the KVS 
+instance started by the query processor and processorSentimentAnalysisKeyFile 
+efines the file that contains the AlchemyAPI key to use (provided in the 
+archive).  Finally, loginfo configures the verbosity of the logging information 
+presented in the command line.
