@@ -53,8 +53,7 @@ public class InfinispanUtils {
             }
         }
         manager.start();
-        System.out.println("infinispan started");
-
+	System.out.println("infinispan started and synchronizing.\nPlease wait...");
     }
 
     public static void stop() {

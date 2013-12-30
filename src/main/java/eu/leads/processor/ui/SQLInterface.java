@@ -74,12 +74,13 @@ public class SQLInterface extends Module {
 
         StringBuilder input = null;
         CommandLineUtil console = new CommandLineUtil();
-        user = console.read("Enter user name:");
+        System.out.println("Using default username: leads");
+        user = "leads";
         com.subscribeToQueue(user + "@" + location);
 
         while (isRunning()) {
             input = new StringBuilder();
-            String line = console.read("Enter your SQL query");
+            String line = console.read("Enter an SQL command terminated with a semicolon. Use quit; to quit.");
 
             line = line.trim();
             input.append(line);
