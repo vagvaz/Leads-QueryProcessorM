@@ -1,108 +1,122 @@
+Prototype implementation of Query Processor
 
-==================================
-= Leads QueryProcessor prototype =
-==================================
+The source code can be found online at https://github.com/vagvaz/Leads-QueryProcessor.git
 
-Here you can find the code for the prototype of the Leads query processor. Moreover, there are the scripts and the dependent libraries.
-Note, that the pagerank algorithm is not in this code release. Instead, a google web service is used.
-===============
-= COMPILATION =
-===============
+Furthermore, the prototype implementation is deployed at https://dashboard-dresden4.aocloud.eu/project/images_and_snapshots/
+as a snapshot of a virtual machine with name Leads-QueryProcessor Demo
 
-you can compile tthe leads with the following command executed in the root directory of the project.
+
+The virtual machine image includes the following software:
+* An open-source operating system (Ubuntu linux), including the Java Virtual Machine
+(OpenJDK 1.7.0).
+* The Query Processor Engine of WP3
+* The distributed PageRank algorithm of WP3
+* The terminal-based user interface for executing SQL queries of WP3
+* A deployment of the Key-Value Store of WP2
+* The distributed web crawler of WP1
+
+
+
+1.1 Compiling and  Running the prototype
+To compile the leads query procesor  the following command must be executed in the root directory of the project.
 mvn clean compile assembly:single
 Then, in the target directory you can find the jar file with all the runtime dependencies.
 To execute the leads query processor you can use the processor-with-crawler.sh script found in scripts directory. 
 Note that the script expects a jar in the working directory named LeadsQueryProcessor.jar and the crawler jar named as crawler.jar.
 
-In the scripts directory there are the following scripts:
 
-1. processor-standalone.sh :  This script starts a standalone instance of 
-the query processor and needs a running instance of the web crawler. Note that if there 
-is no running instance of the Distributed Crawler demo then there would be no 
-data for the query processor to process.  
+processor-with-crawler.sh: This is a stand-alone script, which starts an instance of a web
+crawler together with the query processor. This script is provided only for demonstration
+purposes and will not be useful in the final installation, since the crawlers and the query
+processors will be running independently, possibly also in different micro-clouds.
 
-2. processor-with-crawler.sh:  This script is for demonstration purposes 
-only and starts an instance of the web crawler together with the query 
-processor. For the parametrization of the Leads crawler you can refer 
-either to the README file found in the leads crawler demo virtual machine 
-or to the REAMDE.crawler file found in the Leads-QueryProcessor Demo
+processor.sh: This script starts an instance of the query processor. Use this script if there
+already exists a running instance of the web crawler in the same subnet (see D1.2 for moredetails on the web crawler).
+Any of the two scripts will start a terminal-based user interface for executing SQL queries.
+In order to quit the user interface, use the command ‘quit;’ (note that terminating with Ctrl-C
+may lead to information loss, due to abnormal termination of the KVS store) .
 
-3. This script starts a service, which tracks the crawled pages and populates the  tables of the prototype.
-
-
-Notice that the prototype implementation currently supports the following 
-syntax:
+The query processor implementation currently supports the following SQL syntax:
 SELECT
-    select_expr [, select_expr ...]
-    [FROM table_reference
-    [ JOIN table_reference  ON col_name = col_name ]
-    [WHERE where_condition]
-    [GROUP BY {col_name} ]
-    [HAVING where_condition]
-    [ORDER BY {col_name}
-      [ASC | DESC]]
-    [LIMIT { row_count }]
-    
-At the moment, the following two tables are present in the prototype:
-1. webpages 
-   {  The webpages table contains the crawled webpages.
-      url string: the url of the webpage as a string,
-      domainName string: the domainName for the webpages as a string, 
-      pagerank double: the pagerank computed by WP3 pagerank algorithm as double,
-      body string: the contenty of the webpage as a string and
-      sentiment double: an overall estimation of the sentiment of webpage’s content.
-   }
+select_expr [, select_expr ...]
+[FROM table_reference
+[ JOIN table_reference ON col_name = col_name ]
 
-2. entities 
-   { The entities table contains interesting entities found in webpages i.e. adidas
-      webpageURL string: the url of the webpage that contains the entity,
-      name string: the name of the entity and
-      sentimentScore double: The sentiment for the entity in the webpage
-   }
-===============
-= LIMITATIONS =
-===============
-   
-There are some limitations in the current implementation of the prototype:
-1.       There is no support for aliases
-2.       In queries that contain a join the column of the table found in  FROM 
-clause must be the left operand in the equality relation .  In the following 
-example the url column of the webpages table is the left operand:
-SELECT domainName,name FROM webpages JOIN entities on url=webpageURL
-3.      There is no support for * in select expression for example  the 
-following query will not be processed:
-SELECT * FROM webpages
+[WHERE where_condition]
+[GROUP BY {col_name} ]
+[HAVING where_condition]
+[ORDER BY {col_name}
+[ASC | DESC]]
+[LIMIT { row_count }]
 
-============
-= EXAMPLES =
-============
+The select expression can be a column name, or one of the following functions: count, avg,sum.
+The following two tables are created and maintained automatically, and can be used for writing SQL queries:
 
-A small sample of queries that can be processed by the query processor 
-are presented.
-SELECT domainName, avg(pagerank) FROM webpages group by domainName ORDER BY avg(pagerank) DESC  LIMIT 10; 
+Table webpages: This table contains all crawled web pages, and has the following structure:
+{
+string url: the url of the webpage as a string,
+string domainName: the domainName for the webpage as a string,
+double pagerank: the pagerank computed by WP3 pagerank algorithm as double,
+string body: the content of the webpage as a string and
+double sentiment: an overall estimation of the sentiment of webpage’s content.
+}
 
-SELECT domainName, avg(pagerank), avg(sentimentScore) FROM webpages 
-JOIN entities on url=webpageURL 
-WHERE entities.name like 'a' GROUP BY domainName 
-HAVING avg(sentimentScore) > 0.5 ORDER BY  avg(pagerank) DESC; 
+Table entities: This table contains information for entities that are extracted from the webpages
+(e.g., adidas) and has the following structure:
+{
+string webpageURL: the url of the webpage that contains the entity,
+string name: the name of the entity and
+double sentimentScore: The sentiment for the entity in the webpage
+}
 
+The following sample queries can be used to demonstrate the capabilities of the prototype query
+processor:
+* SELECT domainName, avg(pagerank) FROM webpages GROUP BY
+domainName ORDER BY avg(pagerank) DESC LIMIT 10;
+* SELECT domainName, avg(pagerank), avg(sentimentScore) FROM
+webpages JOIN entities on url=webpageURL WHERE entities.name
+like 'adidas' GROUP BY domainName HAVING avg(sentimentScore) >
+0.5 ORDER BY avg(pagerank) DESC;
+* SELECT count(*) from webpages;
+* SELECT url,sentiment FROM entities WHERE sentiment>0.4 LIMIT 5;
+* SELECT domainName, sum(pagerank) FROM webpages group by domainName ORDER BY sum(pagerank) DESC LIMIT 10;
+
+The prototype implementation has the following limitations:
+1. The query processor does not support aliases.
+2. In queries with a join, the column of the table found in the FROM clause must be the left
+operand in the equality relation. In the following example, the URL column of the webpages
+table is the left operand in the relation of the join :
+SELECT domainName,name FROM webpages JOIN entities on
+url=webpageURL;
+
+3. The * wildcard can be used only inside a function. For example, the following query is
+supported
 SELECT count(*) from webpages;
+whereas the following query is not supported
+SELECT * FROM webpages;
+As a workaround, user must set the column names explicitly.
 
-SELECT webpageURL,sentimentScore FROM entities WHERE sentimentScore > 0.4 LIMIT 5;
+4. The free version of the third-party, web-service AlchemyAPI used for extracting the entities
+and sentiment scores imposes a quota on the number of requests per day and user.
+Furthermore, the service offers no up-time guarantees. If the quota is surpassed or if the
+service is down, some sentiments may be set to -2.
 
-=================
-= CONFIGURATION =
-=================
+5. Robustness: If the query processor terminates unexpectedly (e.g., through a Control-C signal,
+or due to a network or hardware fault) the hosted segment from the KVS may be lost.
+Clearly, this can lead to information loss. This limitation will be addressed by replication at
+the KVS level.
 
-The query processor is parametrized via the processor.properties file present at 
-the root of the directory, as illustrated below.
+1.2 Configuration
+The configuration for the query processor is read by the file processor.properties, which is saved at
+the root directory. The file includes three parameters:
+1. processorInfinispanConfigFile: This parameter defines the file used to
+configure the KVS instance that will be started by the query processor.
+processorSentimentAnalysisKeyFile: This parameter is used to specify the file
+containing the AlchemyAPI key to use.
+2. verbose: This parameter configures the verbosity of the logging information presented
+in the querying terminal. verbose can be set to true or false.
+A sample configuration file follows:
 processorInfinispanConfigFile=infinispan-clustered-tcp-processor.xml
 processorSentimentAnalysisKeyFile=key-processor.txt
 verbose=true;
 
-The processorInfinispanConfigFile defines the file used to configure the KVS 
-instance started by the query processor and processorSentimentAnalysisKeyFile 
-efines the file that contains the AlchemyAPI key to use (provided in the 
-archive).  Finally, loginfo configures the verbosity of the logging information 
-presented in the command line.
